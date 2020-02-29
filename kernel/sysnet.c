@@ -87,6 +87,41 @@ bad:
 // and writing for network sockets.
 //
 
+void sockclose(struct sock *s) { //fixed some things I THINK...BUT could be wrong
+  acquire(&s->lock);
+  struct sock *y = sockets;
+  if (sockets == s) {
+    sockets = sockets->next;
+    kfree((char*)s);
+    release(&s->lock);
+    return;
+  }
+
+  while ((y->next != s) && y) {
+    y = y->next;
+  }
+
+  kfree((char*)s);
+  release(&s->lock);
+}
+
+void socksendto(uint32 raddr, uint16 lport, uint16 rport, char* memaddress, uint16 len) {
+  char temparray[2048]; //lol
+  if (raddr != 2130706433) { // 127.0.0.1
+    printf("ERROR :( THIS HASN'T BEEN IMPLEMENTED YET D:");
+    return;
+  }
+
+  else {
+    // printf("hello");
+    struct mbuf *m = mbufalloc(len + MBUF_DEFAULT_HEADROOM); // allocate new mbuf
+    struct proc *pr = myproc();
+    copyin(pr->pagetable, temparray, (uint64) memaddress, len); //returns int
+    m->head = mbufput(m, len);
+    net_tx_udp(m, raddr, lport, rport); //returns int
+  }
+}
+
 // called by protocol handler layer to deliver UDP packets
 void
 sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)

@@ -75,7 +75,14 @@ fileclose(struct file *f)
 
   if(ff.type == FD_PIPE){
     pipeclose(ff.pipe, ff.writable);
-  } else if(ff.type == FD_INODE || ff.type == FD_DEVICE){
+  } 
+
+  // attempt at writing the socket close condition o___O
+  else if (ff.type == FD_SOCK) {
+    sockclose(ff.sock);
+  }
+
+  else if(ff.type == FD_INODE || ff.type == FD_DEVICE){
     begin_op(ff.ip->dev);
     iput(ff.ip);
     end_op(ff.ip->dev);
