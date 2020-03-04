@@ -1,8 +1,9 @@
 // hi
-#include "types.h"
-#include "user.h"
+#include "kernel/types.h"
+#include "user/user.h"
 
 int main(void) {
-	printf(1, "SOCKET TEST: \n");
+	printf("SOCKET TEST: \n");
 	sockinit();
+	return 0;
 }

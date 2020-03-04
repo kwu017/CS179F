@@ -32,6 +32,12 @@ sockinit(void)
   initlock(&lock, "socktbl");
 }
 
+// void
+// sockbind(void)
+// {
+//   initlock(&lock, "socktbl");
+// }
+
 int
 sockalloc(struct file **f, uint32 raddr, uint16 lport, uint16 rport)
 {
@@ -46,7 +52,22 @@ sockalloc(struct file **f, uint32 raddr, uint16 lport, uint16 rport)
 
   // initialize objects
   si->raddr = raddr;
-  si->lport = lport;
+
+  if (lport != 0) {
+    si->lport = lport;
+  }
+  else {
+    uint16 i = 8000;
+    struct sock *s = sockets;
+    while(s)
+    {
+      if(s->lport == i)
+      {
+        i++;
+      }
+    }
+    s->lport = i;
+  }
   si->rport = rport;
   initlock(&si->lock, "sock");
   mbufq_init(&si->rxq);
@@ -54,6 +75,8 @@ sockalloc(struct file **f, uint32 raddr, uint16 lport, uint16 rport)
   (*f)->readable = 1;
   (*f)->writable = 1;
   (*f)->sock = si;
+
+  // sock bind stuff
 
   // add to list of sockets
   acquire(&lock);
@@ -123,6 +146,20 @@ void socksendto(uint32 raddr, uint16 lport, uint16 rport, char* memaddress, uint
 }
 
 // called by protocol handler layer to deliver UDP packets
+
+void sockread(uint32 raddr, uint16 lport, uint16 rport, struct mbuf *m, uint16 len, char* memaddress) {
+  // struct mbuf *m;
+  struct proc *pr = myproc();
+  char temparray[2048]; // yes it's back
+  while (mbufq_empty(&sockets->rxq)) {
+    sleep(&m, &lock);
+  }
+
+  mbufq_pophead(&sockets->rxq);
+  copyout(pr->pagetable, (uint64) memaddress, temparray, len);
+  mbuffree(m);
+}
+
 void
 sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
 {
