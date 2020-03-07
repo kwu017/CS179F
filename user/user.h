@@ -29,7 +29,7 @@ int crash(const char*, int);
 int mount(char*, char *);
 int umount(char*);
 int sockinit(void);
-// sockbind
+// int sockalloc(struct file**, uint32, uint16, uint16);
 // socksendto
 // sockread
 // maybe sockrecvudp

@@ -4,6 +4,5 @@
 
 int main(void) {
 	printf("SOCKET TEST: \n");
-	sockinit();
 	return 0;
 }

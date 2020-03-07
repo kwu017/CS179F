@@ -4,8 +4,7 @@
 
 int main(void) {
 	printf(1, "SOCKET TEST: \n");
-	sockinit();
-	sockalloc()
+	
 
 	return 0;
 }

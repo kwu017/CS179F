@@ -129,7 +129,11 @@ fileread(struct file *f, uint64 addr, int n)
     if((r = readi(f->ip, 1, addr, f->off, n)) > 0)
       f->off += r;
     iunlock(f->ip);
-  } else {
+  }
+  else if (f->type == FD_SOCK) {
+    sockread(f->sock, addr, n);
+  }
+   else {
     panic("fileread");
   }
 
@@ -180,8 +184,13 @@ filewrite(struct file *f, uint64 addr, int n)
       i += r;
     }
     ret = (i == n ? n : -1);
-  } else {
-    panic("filewrite");
+  }
+  else if (f->type == FD_SOCK)
+  {
+    sockwrite(f->sock, addr, n);
+  }
+  else {
+    panic("filewrite"); //add processing for socket
   }
 
   return ret;

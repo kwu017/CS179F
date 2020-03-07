@@ -38,4 +38,3 @@ entry("sleep");
 entry("uptime");
 entry("connect");
 entry("ntas");
-entry("sockinit");

@@ -66,7 +66,7 @@ sockalloc(struct file **f, uint32 raddr, uint16 lport, uint16 rport)
         i++;
       }
     }
-    s->lport = i;
+    si->lport = i;
   }
   si->rport = rport;
   initlock(&si->lock, "sock");
@@ -86,12 +86,15 @@ sockalloc(struct file **f, uint32 raddr, uint16 lport, uint16 rport)
         pos->lport == lport &&
 	pos->rport == rport) {
       release(&lock);
+      printf("releasing lock at sysnet.c l 89\n");
       goto bad;
     }
     pos = pos->next;
   }
+  printf("Creating socket: raddr = %d, lport = %d, rport = %d\n", si->raddr, si->lport, si->rport);
   si->next = sockets;
   sockets = si;
+  printf("releasing lock at sysnet.c l 97\n");
   release(&lock);
   return 0;
 
@@ -112,6 +115,8 @@ bad:
 
 void sockclose(struct sock *s) { //fixed some things I THINK...BUT could be wrong
   acquire(&s->lock);
+  printf("Closing socket");
+  printf(" with port #: %d\n", s->lport);
   struct sock *y = sockets;
   if (sockets == s) {
     sockets = sockets->next;
@@ -127,38 +132,92 @@ void sockclose(struct sock *s) { //fixed some things I THINK...BUT could be wron
   kfree((char*)s);
   release(&s->lock);
 }
+//socketwrite(struct sock *s, uint64 addr, int n)
+// from *s, get rport; from rport, get remote_socket
+// write to socket
+// wakeup(rsock->mbufq);
 
-void socksendto(uint32 raddr, uint16 lport, uint16 rport, char* memaddress, uint16 len) {
-  char temparray[2048]; //lol
-  if (raddr != 2130706433) { // 127.0.0.1
-    printf("ERROR :( THIS HASN'T BEEN IMPLEMENTED YET D:");
-    return;
-  }
 
-  else {
-    // printf("hello");
-    struct mbuf *m = mbufalloc(len + MBUF_DEFAULT_HEADROOM); // allocate new mbuf
+void sockwrite(struct sock *s, uint64 addr, int n) {
+  if(s->raddr == 2130706433)
+  {
+    printf("Localhost! YAY!\n");
     struct proc *pr = myproc();
-    copyin(pr->pagetable, temparray, (uint64) memaddress, len); //returns int
-    m->head = mbufput(m, len);
-    net_tx_udp(m, raddr, lport, rport); //returns int
+    struct sock* sptr = sockets;
+    struct sock* remote = 0;
+
+    acquire(&s->lock);
+    printf("lock aquired for sockwrite\n");
+    while (sptr && sptr->lport != s->rport)
+    {
+      printf("%x  %d\n", sptr, sptr->lport);
+      sptr = sptr->next;
+    }
+    printf("after while loop\n");
+    if(sptr)
+    {
+      remote = sptr;
+      void * memaddr;
+      printf("Void pointers YAY!\n");
+      struct mbuf *m = mbufalloc(n + MBUF_DEFAULT_HEADROOM);
+      printf("mbuf alloc'ed!\n");
+      memaddr = mbufput(m, n);
+      printf("mbufput done\n");
+      copyin(pr->pagetable, memaddr , addr, n);
+      wakeup((void*) &remote->rxq);
+    }
+    release(&s->lock);
   }
 }
+
+// void socksendto(uint32 raddr, uint16 lport, uint16 rport, char* memaddress, uint16 len) {
+//   char temparray[2048]; //lol
+//   if (raddr != 2130706433) { // 127.0.0.1
+//     printf("ERROR :( THIS HASN'T BEEN IMPLEMENTED YET D:");
+//     return;
+//   }
+
+//   else {
+//     // printf("hello");
+//     struct mbuf *m = mbufalloc(len + MBUF_DEFAULT_HEADROOM); // allocate new mbuf
+//     struct proc *pr = myproc();
+//     if (len>2048){}
+//     copyin(pr->pagetable, temparray, (uint64) memaddress, len); //returns int
+//     m->head = mbufput(m, len);
+//     net_tx_udp(m, raddr, lport, rport); //returns int
+//   }
+// }
 
 // called by protocol handler layer to deliver UDP packets
+//socketread(struct sock *s, uint64 addr, int n)
+//if(mbufq)
 
-void sockread(uint32 raddr, uint16 lport, uint16 rport, struct mbuf *m, uint16 len, char* memaddress) {
-  // struct mbuf *m;
-  struct proc *pr = myproc();
-  char temparray[2048]; // yes it's back
-  while (mbufq_empty(&sockets->rxq)) {
-    sleep(&m, &lock);
-  }
-
-  mbufq_pophead(&sockets->rxq);
-  copyout(pr->pagetable, (uint64) memaddress, temparray, len);
-  mbuffree(m);
+void sockread(struct sock *s, uint64 addr, int n) {
+  while (mbufq_empty(&s->rxq)) {
+     sleep(&s->rxq, &lock);
+   }
+   
+   struct mbuf *m = mbufalloc(n + MBUF_DEFAULT_HEADROOM);
+   struct proc *pr = myproc();
+   acquire(&s->lock);
+   m = mbufq_pophead(&s->rxq);
+   copyout(pr->pagetable, addr, m->head ,n);
+   mbuffree(m);
+   release(&s->lock);
 }
+
+// void sockread(uint32 raddr, uint16 lport, uint16 rport, struct mbuf *m, uint16 len, char* memaddress) {
+//   // struct mbuf *m;
+//   struct proc *pr = myproc();
+//   char temparray[2048]; // yes it's back
+//   while (mbufq_empty(&sockets->rxq)) {
+//     sleep(&m, &lock);
+//   }
+
+//   mbufq_pophead(&sockets->rxq);
+//   copyout(pr->pagetable, (uint64) memaddress, temparray, len);
+//   mbuffree(m);
+// }
 
 void
 sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
