@@ -131,6 +131,7 @@ fileread(struct file *f, uint64 addr, int n)
     iunlock(f->ip);
   }
   else if (f->type == FD_SOCK) {
+    printf("reading from socket\n");
     sockread(f->sock, addr, n);
   }
    else {

@@ -34,13 +34,24 @@ ping(uint16 sport, uint16 dport, int attempts)
       fprintf(2, "ping: send() failed\n");
       exit(1);
     }
+    else
+    {
+      printf("ping: send() success\n");
+    }
+    
   }
 
-  char ibuf[128];
+  char ibuf[2048];
+  printf("about to read\n");
   int cc = read(fd, ibuf, sizeof(ibuf));
+  printf("read\n");
   if(cc < 0){
     fprintf(2, "ping: recv() failed\n");
     exit(1);
+  }
+  else
+  {
+    printf("ping: recv success\n");
   }
 
   close(fd);
@@ -48,6 +59,11 @@ ping(uint16 sport, uint16 dport, int attempts)
     fprintf(2, "ping didn't receive correct payload\n");
     exit(1);
   }
+  else
+  {
+    printf("ping: success\n");
+  }
+  
 }
 
 // Encode a DNS name
