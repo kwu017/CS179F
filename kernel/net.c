@@ -104,8 +104,10 @@ struct mbuf *
 mbufq_pophead(struct mbufq *q)
 {
   struct mbuf *head = q->head;
-  if (!head)
+  if (!head){
+    printf("mbufq empty\n");
     return 0;
+  }
   q->head = head->next;
   return head;
 }

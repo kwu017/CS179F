@@ -142,9 +142,10 @@ void sockclose(struct sock *s) { //fixed some things I THINK...BUT could be wron
 
 
 void sockwrite(struct sock *s, uint64 addr, int n) {
+  printf("sockwrite(s=%x , addr=%x, n=%d\n", s,addr,n);
   if(s->raddr == 2130706433)
   {
-    printf("Localhost! YAY!\n");
+    //printf("Localhost! YAY!\n");
     struct proc *pr = myproc();
     struct sock* sptr = sockets;
     struct sock* remote = 0;
@@ -156,20 +157,24 @@ void sockwrite(struct sock *s, uint64 addr, int n) {
       printf("%x  %d\n", sptr, sptr->lport);
       sptr = sptr->next;
     }
-    printf("after while loop\n");
+
     if(sptr)
     {
-      printf("start if statement\n");
-      acquire(&s->lock);
-      printf("lock aquired for sockwrite\n");
+      printf("lport = %d\n", sptr->lport);
       remote = sptr;
+      //printf("start if statement\n");
+      acquire(&remote->lock);
+      //printf("lock aquired for sockwrite\n");
       void * memaddr;
       printf("Void pointers YAY!\n");
       struct mbuf *m = mbufalloc(n + MBUF_DEFAULT_HEADROOM);
+      printf("sockwrite:  mbuf head = %x\n", m->head);
       printf("mbuf alloc'ed!\n");
       memaddr = mbufput(m, n);
       printf("mbufput done\n");
       copyin(pr->pagetable, memaddr , addr, n);
+      mbufq_pushtail(&remote->rxq, m);
+      printf("&remote->rxq = %x", &remote->rxq);
       wakeup((void*) &remote->rxq);
       release(&s->lock);
     }
@@ -199,29 +204,24 @@ void sockwrite(struct sock *s, uint64 addr, int n) {
 //if(mbufq)
 
 void sockread(struct sock *s, uint64 addr, int n) {
+  acquire(&s->lock);
   printf("starting sockread\n");
-   while (!mbufq_empty(&s->rxq)) {
+   while (mbufq_empty(&s->rxq)) {
      sleep(&s->rxq, &s->lock);
    }
 
    printf("sockread:  sock port = %d,  addr = %x,  n = %d\n", s->lport, addr, n);
    
-   struct mbuf *m = mbufalloc(n + MBUF_DEFAULT_HEADROOM);
+   struct mbuf *m;
+   printf("sockread:  mbuf = %x\n", &m);
    struct proc *pr = myproc();
   //  unsigned int i = 0;
   //  void* ch;
-   acquire(&s->lock);
-   printf("popping mbufq head\n");
    m = mbufq_pophead(&s->rxq);
+   printf("popped mbufq head\n");
+   //printf("sockread:  mbuf head = %x\n", m->head);
    printf("copying memory out\n");
    copyout(pr->pagetable, addr, m->head ,n);
-  //  for(i = 0; i < n; i++){  //DOC: piperead-copy
-  //   if(m->len == 0)
-  //     break;
-  //   ch = (void*)addr + (i % MBUF_SIZE);
-  //   if(copyout(pr->pagetable, addr + i, ch, 1) == -1)
-  //     break;
-  // }
    printf("mbuffree\n");
    mbuffree(m);
    release(&s->lock);
