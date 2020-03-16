@@ -30,7 +30,7 @@ static struct sock *sockets;
 void
 sockinit(void)
 {
-  initlock(&lock, "sock");
+  initlock(&lock, "socktbl");
 
 }
 
@@ -55,21 +55,22 @@ sockalloc(struct file **f, uint32 raddr, uint16 lport, uint16 rport)
   // initialize objects
   si->raddr = raddr;
 
-  if (lport != 0) {
-    si->lport = lport;
-  }
-  else {
-    uint16 i = 8000;
-    struct sock *s = sockets;
-    while(s)
-    {
-      if(s->lport == i)
-      {
-        i++;
-      }
-    }
-    si->lport = i;
-  }
+  // if (lport != 0) {
+  //   si->lport = lport;
+  // }
+  // else {
+  //   uint16 i = 8000;
+  //   struct sock *s = sockets;
+  //   while(s)
+  //   {
+  //     if(s->lport == i)
+  //     {
+  //       i++;
+  //     }
+  //   }
+  //   si->lport = i;
+  // }
+  si->lport = lport;
   si->rport = rport;
   initlock(&si->lock, "sock");
   //memset(&si->lock, 0, sizeof(si->lock));
@@ -141,7 +142,7 @@ void sockclose(struct sock *s) { //fixed some things I THINK...BUT could be wron
 // wakeup(rsock->mbufq);
 
 
-void sockwrite(struct sock *s, uint64 addr, int n) {
+int sockwrite(struct sock *s, uint64 addr, int n) {
   printf("sockwrite(s=%x , addr=%x, n=%d\n", s,addr,n);
   if(s->raddr == 2130706433)
   {
@@ -149,6 +150,7 @@ void sockwrite(struct sock *s, uint64 addr, int n) {
     struct proc *pr = myproc();
     struct sock* sptr = sockets;
     struct sock* remote = 0;
+    struct mbuf *m = mbufalloc(MBUF_DEFAULT_HEADROOM);
 
     //acquire(&s->lock);
     //printf("lock aquired for sockwrite\n");
@@ -167,18 +169,25 @@ void sockwrite(struct sock *s, uint64 addr, int n) {
       //printf("lock aquired for sockwrite\n");
       void * memaddr;
       printf("Void pointers YAY!\n");
-      struct mbuf *m = mbufalloc(n + MBUF_DEFAULT_HEADROOM);
+      //struct mbuf *m = mbufalloc(n + MBUF_DEFAULT_HEADROOM);
       printf("sockwrite:  mbuf head = %x\n", m->head);
       printf("mbuf alloc'ed!\n");
       memaddr = mbufput(m, n);
       printf("mbufput done\n");
-      copyin(pr->pagetable, memaddr , addr, n);
-      mbufq_pushtail(&remote->rxq, m);
+      if (copyin(pr->pagetable, memaddr, addr, n) == -1) {
+        return -1;
+      }
+      //copyin(pr->pagetable, memaddr , addr, n);
+      //mbufq_pushtail(&remote->rxq, m);
       printf("&remote->rxq = %x", &remote->rxq);
-      wakeup((void*) &remote->rxq);
-      release(&s->lock);
+      net_tx_udp(m, s->raddr ,s->lport, s->rport);
+      //wakeup((void*) &remote->rxq);
+      //release(&s->lock);
+      release(&remote->lock);
+      return n;
     }
   }
+  return n;
 }
 
 // void socksendto(uint32 raddr, uint16 lport, uint16 rport, char* memaddress, uint16 len) {
@@ -203,28 +212,40 @@ void sockwrite(struct sock *s, uint64 addr, int n) {
 //socketread(struct sock *s, uint64 addr, int n)
 //if(mbufq)
 
-void sockread(struct sock *s, uint64 addr, int n) {
+int sockread(struct sock *s, uint64 addr, int n) {
+  struct mbuf *m;
+  struct proc *pr = myproc();
+  unsigned int i;
+
   acquire(&s->lock);
   printf("starting sockread\n");
    while (mbufq_empty(&s->rxq)) {
+    if(myproc()->killed){
+      release(&s->lock);
+      return -1;
+    }
      sleep(&s->rxq, &s->lock);
    }
 
    printf("sockread:  sock port = %d,  addr = %x,  n = %d\n", s->lport, addr, n);
-   
-   struct mbuf *m;
    printf("sockread:  mbuf = %x\n", &m);
-   struct proc *pr = myproc();
   //  unsigned int i = 0;
   //  void* ch;
    m = mbufq_pophead(&s->rxq);
    printf("popped mbufq head\n");
    //printf("sockread:  mbuf head = %x\n", m->head);
    printf("copying memory out\n");
-   copyout(pr->pagetable, addr, m->head ,n);
+   for(i = 0; i < n; i++){
+    if(copyout(pr->pagetable, addr + i, m->head, 1) == -1) {
+      break;
+    }
+    mbufpull(m, 1);
+  }
+   //copyout(pr->pagetable, addr, m->head ,n);
    printf("mbuffree\n");
    mbuffree(m);
    release(&s->lock);
+   return i;
 }
 
 // void sockread(uint32 raddr, uint16 lport, uint16 rport, struct mbuf *m, uint16 len, char* memaddress) {
