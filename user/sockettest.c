@@ -29,7 +29,7 @@ void socktest()
 		{
 			printf("PID %d : Bound to port %d\n", pid, C_PORT);
 		}
-		wait(1);
+		// goodbye wait(0); //USED TO BE 1
 		
 		printf("PID %d : Testing send\n", pid);
 		
@@ -39,6 +39,10 @@ void socktest()
 		{
 			fprintf(2, "send() failed\n");
 			exit(1);
+		}
+
+		else {
+			printf(obuf);
 		}
 
 		exit(0);
@@ -58,7 +62,7 @@ void socktest()
 			printf("PID %d : Bound to port %d\n", pid, P_PORT);
 		}
 		
-		printf("PID %d : Testing recv", pid);
+		printf("PID %d : Testing recv\n", pid);
 		
 		int cc = read(fd, ibuf, sizeof(ibuf));
 		printf("read\n");
@@ -74,4 +78,6 @@ void socktest()
 
 		exit(0);
 	}
+	exit(0);
+	return;
 }

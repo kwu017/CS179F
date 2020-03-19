@@ -7,6 +7,7 @@ addr = ('localhost', int(sys.argv[1]))
 buf = "this is a ping!"
 
 while True:
-	print >>sys.stderr, "pinging..."
+	# print >>sys.stderr, "pinging..."
+	print("pinging...")
 	sock.sendto(buf, ("127.0.0.1", int(sys.argv[1])))
 	time.sleep(1)
