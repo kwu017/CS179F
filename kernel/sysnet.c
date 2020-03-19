@@ -118,23 +118,57 @@ bad:
 //
 
 void sockclose(struct sock *s) { //fixed some things I THINK...BUT could be wrong
-  acquire(&s->lock);
   printf("Closing socket");
   printf(" with port #: %d\n", s->lport);
-  struct sock *y = sockets;
-  if (sockets == s) {
-    sockets = sockets->next;
-    kfree((char*)s);
-    release(&s->lock);
-    return;
-  }
+  struct sock *pos, *next;
+  acquire(&s->lock);
 
-  while ((y->next != s) && y) {
-    y = y->next;
+  printf("About to free outstanding mbufs\n");
+  // free outstanding mbufs
+  while(!mbufq_empty(&s->rxq)) {
+    printf("Whee! We are freeing mbufs!!!\n");
+    mbuffree(mbufq_pophead(&s->rxq));
   }
+  printf("Finished freeing outstanding mbufs...\n");
 
-  kfree((char*)s);
+  // remove from sockets
+  acquire(&lock);
+  pos = sockets;
+  if (pos->raddr == s->raddr && pos->lport == s->lport && pos->rport == s->rport) {
+    sockets = pos->next;
+  } 
+  else {
+    while(pos->next) {
+      next = pos->next;
+      if (next->raddr == s->raddr && next->lport == s->lport && next->rport == s->rport) {
+        pos->next = next->next;
+        break;
+      }
+    }
+  }
+  release(&lock);
+
+  // clean up
   release(&s->lock);
+  kfree((char*)s);
+  // acquire(&s->lock);
+  // printf("Closing socket");
+  // printf(" with port #: %d\n", s->lport);
+  // struct sock *y = sockets;
+  // if (sockets == s) {
+  //   sockets = sockets->next;
+  //   kfree((char*)s);
+  //   release(&s->lock);
+  //   return;
+  // }
+
+  // while ((y->next != s) && y) {
+  //   y = y->next;
+  // }
+
+  // kfree((char*)s);
+  // release(&s->lock);
+  printf("REACHED END OF CLOSE FUNCTION\n");
 }
 //socketwrite(struct sock *s, uint64 addr, int n)
 // from *s, get rport; from rport, get remote_socket
@@ -165,7 +199,7 @@ int sockwrite(struct sock *s, uint64 addr, int n) {
       printf("lport = %d\n", sptr->lport);
       remote = sptr;
       //printf("start if statement\n");
-      acquire(&remote->lock);
+      acquire(&remote->lock); //used to be remote
       //printf("lock aquired for sockwrite\n");
       void * memaddr;
       printf("Void pointers YAY!\n");
@@ -179,11 +213,13 @@ int sockwrite(struct sock *s, uint64 addr, int n) {
       }
       //copyin(pr->pagetable, memaddr , addr, n);
       //mbufq_pushtail(&remote->rxq, m);
-      printf("&remote->rxq = %x", &remote->rxq);
+      printf("&remote->rxq = %x\n", &remote->rxq);
       net_tx_udp(m, s->raddr ,s->lport, s->rport);
-      //wakeup((void*) &remote->rxq);
+      printf("HELLO THIS IS AFTER NET_TX_UDP FUNCTION\n");
+      wakeup((void*) &remote->rxq);
       //release(&s->lock);
       release(&remote->lock);
+      printf("PLEASE RELEASE!!\n");
       return n;
     }
   }
@@ -220,10 +256,13 @@ int sockread(struct sock *s, uint64 addr, int n) {
   acquire(&s->lock);
   printf("starting sockread\n");
    while (mbufq_empty(&s->rxq)) {
+    printf("wassup this is loop\n");
     if(myproc()->killed){
       release(&s->lock);
+      printf("nuuuu!!!\n");
       return -1;
     }
+      printf("sleepy time\n");
      sleep(&s->rxq, &s->lock);
    }
 
