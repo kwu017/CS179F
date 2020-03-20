@@ -17,6 +17,7 @@ void socktest()
 		return;
     if(pid == 0)
 	{
+		printf("\n------CHILD PROCESS------\n");
 		pid = getpid(); //Get pid.  Not sure this works on xv6
 		printf("Child PID = %d\n", pid);  
 		
@@ -33,7 +34,8 @@ void socktest()
 		
 		printf("PID %d : Testing send\n", pid);
 		
-		char obuf[26] = "Hello from child process!\n";
+		// message to send to parent process
+		char obuf[26] = "Hello from child process! ";
 		
 		if(write(fd, obuf, sizeof(obuf)) < 0)
 		{
@@ -42,7 +44,9 @@ void socktest()
 		}
 
 		else {
+			printf("Message to be sent: ");
 			printf(obuf);
+			printf("\n");
 		}
 
 		int cc = read(fd, ibuf, sizeof(ibuf));
@@ -61,6 +65,7 @@ void socktest()
 	}
 	else if (pid > 0)
 	{
+		printf("\n------PARENT PROCESS------\n");
 		pid = getpid(); //Get pid.  Not sure this works on xv6
 		printf("Parent PID = %d\n", pid);
 		
@@ -77,7 +82,7 @@ void socktest()
 		printf("PID %d : Testing recv\n", pid);
 		
 		int cc = read(fd, ibuf, sizeof(ibuf));
-		printf("read\n");
+		printf("reading...\n");
 		if(cc < 0){
 			fprintf(2, "recv() failed\n");
 			exit(1);
