@@ -45,6 +45,18 @@ void socktest()
 			printf(obuf);
 		}
 
+		int cc = read(fd, ibuf, sizeof(ibuf));
+		printf("read\n");
+		if(cc < 0){
+			fprintf(2, "recv() failed\n");
+			exit(1);
+		}
+		else
+		{
+			printf("recv success\n");
+			printf("Got \"%s\" from child proc!\n", ibuf);
+		}
+
 		exit(0);
 	}
 	else if (pid > 0)

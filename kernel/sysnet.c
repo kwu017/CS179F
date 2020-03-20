@@ -215,7 +215,7 @@ void sockwrite(struct sock *s, uint64 addr, int n) {
         return;
       }
       //copyin(pr->pagetable, memaddr , addr, n);
-      //mbufq_pushtail(&remote->rxq, m);
+      mbufq_pushtail(&remote->rxq, m);
       //printf("&remote->rxq = %x\n", &remote->rxq);
       //net_tx_udp(m, s->raddr ,s->lport, s->rport);
       //printf("HELLO THIS IS AFTER NET_TX_UDP FUNCTION\n");
