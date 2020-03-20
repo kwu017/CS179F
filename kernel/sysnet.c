@@ -187,7 +187,7 @@ void sockwrite(struct sock *s, uint64 addr, int n) {
     //printf("lock aquired for sockwrite\n");
     while (sptr && sptr->lport != s->rport)
     {
-      printf("%x  %d\n", sptr, sptr->lport);
+      printf("checking sptr %x %d\n", sptr, sptr->lport);
       sptr = sptr->next;
     }
 
@@ -205,6 +205,7 @@ void sockwrite(struct sock *s, uint64 addr, int n) {
       printf("mbuf alloc'ed!\n");
       memaddr = mbufput(m, n);
       printf("mbufput done\n");
+<<<<<<< HEAD
       // if (copyin(pr->pagetable, memaddr, addr, n) == -1) {
       //   exit(1);
       //   return;
@@ -213,12 +214,30 @@ void sockwrite(struct sock *s, uint64 addr, int n) {
       //mbufq_pushtail(&remote->rxq, m);
       printf("&remote->rxq = %x\n", &remote->rxq);
       //net_tx_udp(m, s->raddr ,s->lport, s->rport);
+=======
+      if (copyin(pr->pagetable, memaddr, addr, n) == -1) {
+		printf("Error copying data into kern space\n");
+        return -1;
+      }
+      //copyin(pr->pagetable, memaddr , addr, n);
+      //mbufq_pushtail(&remote->rxq, m);
+      printf("&remote->rxq = %x\n", &remote->rxq);
+      //net_tx_udp(m, s->raddr ,s->lport, s->rport);
+      //printf("HELLO THIS IS AFTER NET_TX_UDP FUNCTION\n");
+>>>>>>> 9d86a9e0e3ea47c26e3ef2131da347d29303e381
       wakeup((void*) &remote->rxq);
       //release(&s->lock);
       release(&remote->lock);
       //printf("PLEASE RELEASE!!\n");
+<<<<<<< HEAD
       //return n;
+=======
+      return n;
+>>>>>>> 9d86a9e0e3ea47c26e3ef2131da347d29303e381
     }
+	else{
+		printf("No destination socket with that port found\n");
+	}
   }
   //return n;
 }
