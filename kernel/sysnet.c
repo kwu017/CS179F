@@ -199,45 +199,38 @@ void sockwrite(struct sock *s, uint64 addr, int n) {
       acquire(&remote->lock);
       //printf("lock aquired for sockwrite\n");
       void * memaddr;
-      printf("Void pointers YAY!\n");
+      // printf("Void pointers YAY!\n");
       //struct mbuf *m = mbufalloc(n + MBUF_DEFAULT_HEADROOM);
       printf("sockwrite:  mbuf head = %x\n", m->head);
       printf("mbuf alloc'ed!\n");
       memaddr = mbufput(m, n);
       printf("mbufput done\n");
-<<<<<<< HEAD
-      // if (copyin(pr->pagetable, memaddr, addr, n) == -1) {
-      //   exit(1);
-      //   return;
-      // }
       copyin(pr->pagetable, memaddr , addr, n);
       //mbufq_pushtail(&remote->rxq, m);
       printf("&remote->rxq = %x\n", &remote->rxq);
       //net_tx_udp(m, s->raddr ,s->lport, s->rport);
-=======
       if (copyin(pr->pagetable, memaddr, addr, n) == -1) {
-		printf("Error copying data into kern space\n");
-        return -1;
+		  printf("Error copying data into kern space\n");
+        exit(1);
+        return;
       }
       //copyin(pr->pagetable, memaddr , addr, n);
       //mbufq_pushtail(&remote->rxq, m);
-      printf("&remote->rxq = %x\n", &remote->rxq);
+      //printf("&remote->rxq = %x\n", &remote->rxq);
       //net_tx_udp(m, s->raddr ,s->lport, s->rport);
       //printf("HELLO THIS IS AFTER NET_TX_UDP FUNCTION\n");
->>>>>>> 9d86a9e0e3ea47c26e3ef2131da347d29303e381
       wakeup((void*) &remote->rxq);
+      printf("After waking up remote->rxq\n");
       //release(&s->lock);
       release(&remote->lock);
       //printf("PLEASE RELEASE!!\n");
-<<<<<<< HEAD
       //return n;
-=======
-      return n;
->>>>>>> 9d86a9e0e3ea47c26e3ef2131da347d29303e381
+      //return n;
     }
-	else{
-		printf("No destination socket with that port found\n");
-	}
+
+	 else{
+		  printf("No destination socket with that port found\n");
+	 }
   }
   //return n;
 }
@@ -279,6 +272,7 @@ void sockread(struct sock *s, uint64 addr, int n) {
       return;
     }
       printf("sleepy time\n");
+      printf("&s->rxq: %x\n", &s->rxq);
      sleep(&s->rxq, &s->lock);
    }
 
