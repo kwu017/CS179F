@@ -74,8 +74,8 @@ void            sockrecvudp(struct mbuf*, uint32, uint16, uint16);
 void 			sockclose(struct sock*);
 //void 			socksendto(uint32, uint16, uint16, char*, uint16);
 //void 			sockread(uint32, uint16, uint16, struct mbuf*, uint16, char*);
-int 			sockwrite(struct sock*, uint64, int);
-int 			sockread(struct sock*, uint64, int);
+void 			sockwrite(struct sock*, uint64, int);
+void 			sockread(struct sock*, uint64, int);
 
 // ramdisk.c
 void            ramdiskinit(void);

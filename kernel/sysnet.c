@@ -123,13 +123,10 @@ void sockclose(struct sock *s) { //fixed some things I THINK...BUT could be wron
   struct sock *pos, *next;
   acquire(&s->lock);
 
-  printf("About to free outstanding mbufs\n");
   // free outstanding mbufs
   while(!mbufq_empty(&s->rxq)) {
-    printf("Whee! We are freeing mbufs!!!\n");
     mbuffree(mbufq_pophead(&s->rxq));
   }
-  printf("Finished freeing outstanding mbufs...\n");
 
   // remove from sockets
   acquire(&lock);
@@ -176,7 +173,7 @@ void sockclose(struct sock *s) { //fixed some things I THINK...BUT could be wron
 // wakeup(rsock->mbufq);
 
 
-int sockwrite(struct sock *s, uint64 addr, int n) {
+void sockwrite(struct sock *s, uint64 addr, int n) {
   printf("sockwrite(s=%x , addr=%x, n=%d\n", s,addr,n);
   if(s->raddr == 2130706433)
   {
@@ -184,7 +181,7 @@ int sockwrite(struct sock *s, uint64 addr, int n) {
     struct proc *pr = myproc();
     struct sock* sptr = sockets;
     struct sock* remote = 0;
-    struct mbuf *m = mbufalloc(MBUF_DEFAULT_HEADROOM);
+    struct mbuf *m = mbufalloc(n + MBUF_DEFAULT_HEADROOM);
 
     //acquire(&s->lock);
     //printf("lock aquired for sockwrite\n");
@@ -199,7 +196,7 @@ int sockwrite(struct sock *s, uint64 addr, int n) {
       printf("lport = %d\n", sptr->lport);
       remote = sptr;
       //printf("start if statement\n");
-      acquire(&remote->lock); //used to be remote
+      acquire(&remote->lock);
       //printf("lock aquired for sockwrite\n");
       void * memaddr;
       printf("Void pointers YAY!\n");
@@ -208,22 +205,22 @@ int sockwrite(struct sock *s, uint64 addr, int n) {
       printf("mbuf alloc'ed!\n");
       memaddr = mbufput(m, n);
       printf("mbufput done\n");
-      if (copyin(pr->pagetable, memaddr, addr, n) == -1) {
-        return -1;
-      }
-      //copyin(pr->pagetable, memaddr , addr, n);
+      // if (copyin(pr->pagetable, memaddr, addr, n) == -1) {
+      //   exit(1);
+      //   return;
+      // }
+      copyin(pr->pagetable, memaddr , addr, n);
       //mbufq_pushtail(&remote->rxq, m);
       printf("&remote->rxq = %x\n", &remote->rxq);
-      net_tx_udp(m, s->raddr ,s->lport, s->rport);
-      printf("HELLO THIS IS AFTER NET_TX_UDP FUNCTION\n");
+      //net_tx_udp(m, s->raddr ,s->lport, s->rport);
       wakeup((void*) &remote->rxq);
       //release(&s->lock);
       release(&remote->lock);
-      printf("PLEASE RELEASE!!\n");
-      return n;
+      //printf("PLEASE RELEASE!!\n");
+      //return n;
     }
   }
-  return n;
+  //return n;
 }
 
 // void socksendto(uint32 raddr, uint16 lport, uint16 rport, char* memaddress, uint16 len) {
@@ -248,10 +245,10 @@ int sockwrite(struct sock *s, uint64 addr, int n) {
 //socketread(struct sock *s, uint64 addr, int n)
 //if(mbufq)
 
-int sockread(struct sock *s, uint64 addr, int n) {
+void sockread(struct sock *s, uint64 addr, int n) {
   struct mbuf *m;
   struct proc *pr = myproc();
-  unsigned int i;
+  //unsigned int i;
 
   acquire(&s->lock);
   printf("starting sockread\n");
@@ -259,8 +256,8 @@ int sockread(struct sock *s, uint64 addr, int n) {
     printf("wassup this is loop\n");
     if(myproc()->killed){
       release(&s->lock);
-      printf("nuuuu!!!\n");
-      return -1;
+      exit(1);
+      return;
     }
       printf("sleepy time\n");
      sleep(&s->rxq, &s->lock);
@@ -274,17 +271,17 @@ int sockread(struct sock *s, uint64 addr, int n) {
    printf("popped mbufq head\n");
    //printf("sockread:  mbuf head = %x\n", m->head);
    printf("copying memory out\n");
-   for(i = 0; i < n; i++){
-    if(copyout(pr->pagetable, addr + i, m->head, 1) == -1) {
-      break;
-    }
-    mbufpull(m, 1);
-  }
-   //copyout(pr->pagetable, addr, m->head ,n);
+  //  for(i = 0; i < n; i++){
+  //   if(copyout(pr->pagetable, addr + i, m->head, 1) == -1) {
+  //     break;
+  //   }
+  //   mbufpull(m, 1);
+  // }
+   copyout(pr->pagetable, addr, m->head ,n);
    printf("mbuffree\n");
    mbuffree(m);
    release(&s->lock);
-   return i;
+   //return i;
 }
 
 // void sockread(uint32 raddr, uint16 lport, uint16 rport, struct mbuf *m, uint16 len, char* memaddress) {
